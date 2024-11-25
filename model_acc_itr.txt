@@ -1,0 +1,36 @@
+v1~v3使用yolov8s來訓練，要正確辨識出近景的工件有無加工都不太清楚，要找尋其他方法
+v4 不resize，多旋轉，效果較好
+v5 嘗試用yolov8m模型,訓練慢、效果不如預期
+
+
+v6:	processed : 0%,		unprossed : 60.9%
+v7:	processed : 46.8% ,	unprossed : 75%
+v8:	processed : 70% ,	unprossed : 77.6%
+
+v8+圓形算法:	
+	processed : 70% ,	unprossed : 77.6%
+v8+SIFT:
+	processed : 67.5% ,	unprossed : 77.6%
+det_v10+cls_v2 雙模型
+	processed : 80.5% ,	unprossed : 90%
+det_v10+cls_v3 雙模型
+	在檢測平放物件時已經有99%準確率，接下來要針對角度與光線加強訓練
+det_v10+cls_v4 雙模型
+
+	processed : 100% ,	unprossed : 95%
+
+det_v10+cls_v5 雙模型
+	processed : 100% ,	unprossed : 100%
+
+det_v10+egdt_v1 雙模型
+	processed : 100% ,	unprossed : 100%
+
+det_v10+egdt_v2 雙模型
+	processed : 100% ,	unprossed : 100%
+
+det_v10+egdt_v3 雙模型
+	processed : 100% ,	unprossed : 100%
+
+det_v10+egdt_3n 雙模型、耗時-20%
+	processed : 100% ,	unprossed : 100%
+
