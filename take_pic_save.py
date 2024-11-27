@@ -4,7 +4,7 @@ import cv2,os
 resolution_w, resolution_h=1920,1080
 
 # 初始化相机
-cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, resolution_w)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution_h)
@@ -29,8 +29,10 @@ def count_jpg_files(directory):
 # 拍照保存次数控制
 
 def main():
-    current_pic_num=count_jpg_files("./take_picture/")
     space_press_count = 0
+    saved_pth="./unmake_data"
+    # current_pic_num=count_jpg_files("./take_picture/")
+    current_pic_num=count_jpg_files(saved_pth)
     
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -58,7 +60,7 @@ def main():
                 cropped_frame = frame
                 # 保存图片
                 current_pic_num+=1
-                cv2.imwrite(f'./saved_img/image_{current_pic_num}.jpg', cropped_frame)
+                cv2.imwrite(f'{saved_pth}/image_{current_pic_num}.jpg', cropped_frame)
                 print(f"save picture as 'image_{current_pic_num}.jpg'")
                 space_press_count = 0
 

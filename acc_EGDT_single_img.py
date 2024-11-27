@@ -1,34 +1,34 @@
 import cv2
 import torch
 import numpy as np
-
 import os
 from ultralytics import YOLO
 
 ESC_KEY = 27
 
-# 加载 YOLOv8 模型
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 ultralytics_path = "C:/project_file/ultralytics_v8"
+# ultralytics_path = "C:/project_file/ultralytics_v11"
 
 #img path
-# 指定图像文件路径
-pth="./img/"
-f_name='egdt_test_1.jpg'
+pth="./saved_img/"
+save_pth="./saved_egdt_img/"
+# f_name='egdt_test_1.jpg'
+f_name='20241126-115622_img18.jpg'
 img_path = pth+f_name  # 替换为你的图像路径
 
 # 加载邊角檢測模型
-egdt_model_ver = "v7"
-egdt_model = YOLO(f'{ultralytics_path}/runs/detect/sp_egdt_{egdt_model_ver}/weights/best.pt', verbose=False)
+egdt_model_ver = "v11"
+# egdt_model = YOLO(f'{ultralytics_path}/runs/detect/sp_egdt_{egdt_model_ver}/weights/best.pt', verbose=False)
 # egdt_model = YOLO(f'C:/project_file/ultralytics_v11/runs/detect/sp_egdt_v7/weights/best.pt')
-# egdt_model = YOLO(f'C:/project_file/ultralytics_v11/runs/detect/sp_egdt_v7_fine-tune/weights/best.pt')
+egdt_model = YOLO(f'C:/project_file/ultralytics_v11/runs/detect/sp_egdt_{egdt_model_ver}/weights/best.pt')
 print(f"egdt_Model loaded successfully! model version: {egdt_model_ver}")
 egdt_model = egdt_model.to(device)
 
 # 加载孔洞檢測模型
-det_model_ver = "v11"
-det_model = YOLO(f'{ultralytics_path}/runs/detect/sp_obj_{det_model_ver}/weights/best.pt', verbose=False)
-# det_model = YOLO("C:/project_file/ultralytics_v11/runs/detect/sp_holes_v11_fine-tune/weights/best.pt")#v11s_model
+det_model_ver = "v12"
+# det_model = YOLO(f'{ultralytics_path}/runs/detect/sp_obj_{det_model_ver}/weights/best.pt', verbose=False)
+det_model = YOLO(f"C:/project_file/ultralytics_v11/runs/detect/sp_holes_{det_model_ver}/weights/best.pt")#v11s_model
 
 print(f"det_Model loaded successfully! model version: {det_model_ver}")
 det_model = det_model.to(device)
@@ -55,12 +55,12 @@ def have_edge(cropped_img):
                     cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,255,0), 2)
                 elif score >= score_threshold[1]:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
-                    egdt_flag=True
-                    cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,255,255), 2)
+                    # egdt_flag=True``
+                    # cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,255,255), 2)
                 elif score >= score_threshold[0]:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
-                    egdt_flag=True
-                    cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,125,255), 2)
+                    # egdt_flag=True
+                    # cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,125,255), 2)
                 else:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
                     cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,0,255), 2)
@@ -84,7 +84,7 @@ def main():
     frame = cv2.imread(img_path)
     height, width, channels = frame.shape
 
-    img_rate=1280
+    img_rate=1920
     retangle_rate=20     #多出原圖2/n的大小
 
     width_set=img_rate
@@ -165,14 +165,11 @@ def main():
     if len(rows) > 0:
         final_image = cv2.vconcat(rows)
         cv2.imshow("all_hole_in_this_img", final_image)
-        cv2.imwrite(f"egdt{egdt_model_ver}_holes.jpg", final_image)
+        cv2.imwrite(f"{save_pth}egdt{egdt_model_ver}_{f_name}_holes.jpg", final_image)
 
-        # cv2.imwrite(f"final_{det_model_ver}det_{cls_model_ver}cls.png", final_image)  #存組合洞洞圖
-
-
-    cv2.imwrite(f"{pth}{f_name}_d{det_model_ver}egdt{egdt_model_ver}.jpg", frame)     #存辨識原圖
+    cv2.imwrite(f"{save_pth}{f_name}_d{det_model_ver}egdt{egdt_model_ver}.jpg", frame)     #存辨識原圖
     print(f"{frame.shape}")
-    frame=cv2.resize(frame,(frame.shape[1]//2,frame.shape[0]//2))   #把frame變成比較好顯示的大小
+    # frame=cv2.resize(frame,(frame.shape[1]//2,frame.shape[0]//2))   #把frame變成比較好顯示的大小
     cv2.imshow("Detection Results", frame)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
