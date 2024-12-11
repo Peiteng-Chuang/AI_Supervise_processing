@@ -1,35 +1,49 @@
 import cv2
 import torch
 import numpy as np
-import os
+import os, random
 from ultralytics import YOLO
 
 ESC_KEY = 27
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-ultralytics_path = "C:/project_file/ultralytics_v8"
-# ultralytics_path = "C:/project_file/ultralytics_v11"
+ultralytics_path = "C:/project_file/ultralytics_v11"
 
-#img path
+def random_img(path):
+    # 確保路徑存在
+    if not os.path.exists(path):
+        raise ValueError(f"The specified path does not exist: {path}")
+    
+    # 過濾圖片檔案類型
+    img_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff"}
+    img_files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and os.path.splitext(f)[1].lower() in img_extensions]
+    
+    # 如果資料夾中沒有圖片
+    if not img_files:
+        raise ValueError("No image files found in the specified directory.")
+    
+    # 隨機選擇一個圖像檔名
+    return random.choice(img_files)
+
+#img path  ./saved_img/old_data/ (C:/Users/Peiteng.Chuang/Desktop/factor/image/)
 pth="./saved_img/"
 save_pth="./saved_egdt_img/"
 # f_name='egdt_test_1.jpg'
-f_name='20241126-115622_img18.jpg'
+# f_name='20241209-151154_img1106.jpg'
+f_name=random_img(pth)
+# f_name="hdr_image.png"
 img_path = pth+f_name  # 替换为你的图像路径
+print(f"***{img_path}***")
 
 # 加载邊角檢測模型
-egdt_model_ver = "v11"
-# egdt_model = YOLO(f'{ultralytics_path}/runs/detect/sp_egdt_{egdt_model_ver}/weights/best.pt', verbose=False)
-# egdt_model = YOLO(f'C:/project_file/ultralytics_v11/runs/detect/sp_egdt_v7/weights/best.pt')
-egdt_model = YOLO(f'C:/project_file/ultralytics_v11/runs/detect/sp_egdt_{egdt_model_ver}/weights/best.pt')
+egdt_model_ver = "v12"
+egdt_model = YOLO(f'{ultralytics_path}/runs/detect/sp_egdt_{egdt_model_ver}/weights/best.pt', verbose=False)
 print(f"egdt_Model loaded successfully! model version: {egdt_model_ver}")
 egdt_model = egdt_model.to(device)
 
 # 加载孔洞檢測模型
 det_model_ver = "v12"
-# det_model = YOLO(f'{ultralytics_path}/runs/detect/sp_obj_{det_model_ver}/weights/best.pt', verbose=False)
-det_model = YOLO(f"C:/project_file/ultralytics_v11/runs/detect/sp_holes_{det_model_ver}/weights/best.pt")#v11s_model
-
+det_model = YOLO(f'{ultralytics_path}/runs/detect/sp_holes_{det_model_ver}/weights/best.pt', verbose=False)
 print(f"det_Model loaded successfully! model version: {det_model_ver}")
 det_model = det_model.to(device)
 
@@ -55,7 +69,7 @@ def have_edge(cropped_img):
                     cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,255,0), 2)
                 elif score >= score_threshold[1]:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
-                    # egdt_flag=True``
+                    # egdt_flag=True
                     # cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,255,255), 2)
                 elif score >= score_threshold[0]:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
@@ -79,7 +93,6 @@ def do_otsu(img):
 
 def main():
     global img_path
-    # img_path = "./product_img/img (1).png"  # 替换为你的图像路径
 
     frame = cv2.imread(img_path)
     height, width, channels = frame.shape

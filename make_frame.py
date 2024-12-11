@@ -2,7 +2,7 @@ import cv2
 import os
 
 # 設定影片路徑和儲存 frames 的資料夾
-video_path = "IMG_5100.mp4"  # 替換成你的影片檔名或路徑
+video_path = "C:/Users/Peiteng.Chuang/Desktop/factor/video/2024-11-26_11-45-31.avi"  # 替換成你的影片檔名或路徑
 output_folder = "frames"
 
 # 建立 frames 資料夾（如果不存在的話）
@@ -12,7 +12,7 @@ if not os.path.exists(output_folder):
 # 讀取影片
 cap = cv2.VideoCapture(video_path)
 frame_count = 0
-img_count = 0
+img_count = 0   
 # 循環讀取影片的每一幀
 while cap.isOpened():
     ret, frame = cap.read()
@@ -20,7 +20,7 @@ while cap.isOpened():
         break
     
     # 儲存幀影像到 frames 資料夾
-    if frame_count%20==0:
+    if frame_count%5==0:
         frame_filename = os.path.join(output_folder, f"frame_{frame_count:04d}.png")
         cv2.imwrite(frame_filename, frame)
         img_count += 1
