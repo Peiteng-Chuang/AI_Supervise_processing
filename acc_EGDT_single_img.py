@@ -26,7 +26,7 @@ def random_img(path):
     return random.choice(img_files)
 
 #img path  ./saved_img/old_data/ (C:/Users/Peiteng.Chuang/Desktop/factor/image/)
-pth="./saved_img/"
+pth="./saved_img/old_data/"
 save_pth="./saved_egdt_img/"
 # f_name='egdt_test_1.jpg'
 # f_name='20241209-151154_img1106.jpg'
@@ -36,7 +36,7 @@ img_path = pth+f_name  # 替换为你的图像路径
 print(f"***{img_path}***")
 
 # 加载邊角檢測模型
-egdt_model_ver = "v12"
+egdt_model_ver = "v13f"
 egdt_model = YOLO(f'{ultralytics_path}/runs/detect/sp_egdt_{egdt_model_ver}/weights/best.pt', verbose=False)
 print(f"egdt_Model loaded successfully! model version: {egdt_model_ver}")
 egdt_model = egdt_model.to(device)
@@ -56,28 +56,33 @@ def have_edge(cropped_img):
     # cropped_img=gray
     results = egdt_model(cropped_img, verbose=False)
     egdt_flag=False
-    score_threshold=[0.2,0.4,0.6]
+    score_threshold=[0.4,0.5,0.6,0.7]
     if results:
           
         for result in results:
             boxes = result.boxes  # 获取检测框
             for box in boxes:
                 score = box.conf[0].item()  # 获取置信度分數
-                if score >= score_threshold[2]:
+                if score >= score_threshold[3]:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
                     egdt_flag=True
                     cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,255,0), 2)
+
+                elif score >= score_threshold[2]:
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
+                    egdt_flag=True
+                    cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(255,255,0), 2)
                 elif score >= score_threshold[1]:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
-                    # egdt_flag=True
-                    # cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,255,255), 2)
+                    egdt_flag=True
+                    cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,255,255), 2)
                 elif score >= score_threshold[0]:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
                     # egdt_flag=True
                     # cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,125,255), 2)
                 else:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
-                    cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,0,255), 2)
+                    # cropped_img = cv2.rectangle(cropped_img, (int(x1), int(y1)), (int(x2), int(y2)),(0,0,255), 2)
         return cropped_img,egdt_flag
                 
     cropped_img = cv2.putText(cropped_img, f"O", (5,5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
@@ -105,7 +110,7 @@ def main():
     # frame = cv2.resize(frame,(int(width/rate),int(height/rate)),interpolation=cv2.INTER_AREA)
     frame = cv2.resize(frame,(width_set,height_set),interpolation=cv2.INTER_AREA)
 
-    crop_size = (100, 100)
+    crop_size = (128, 128)
     collected_images = []
 
     # 进行物体检测
