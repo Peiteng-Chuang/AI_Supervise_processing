@@ -36,7 +36,7 @@ img_path = pth+f_name  # 替换为你的图像路径
 print(f"***{img_path}***")
 
 # 加载邊角檢測模型
-egdt_model_ver = "v13f"
+egdt_model_ver = "v13"
 egdt_model = YOLO(f'{ultralytics_path}/runs/detect/sp_egdt_{egdt_model_ver}/weights/best.pt', verbose=False)
 print(f"egdt_Model loaded successfully! model version: {egdt_model_ver}")
 egdt_model = egdt_model.to(device)

@@ -1,0 +1,37 @@
+整個循環:
+
+moving_base_part_1(moving in)
+
+place_item_1(舉起)
+place_item_2(放下)
+
+press_button
+
+waiting_process(counting)
+
+moving_base_part_2(remove)
+
+check_the_hole_1(push)
+check_the_hole_2(pull)
+
+put_it_into_box
+
+
+===========================
+例外:
+
+Other
+playing_phone
+
+==========================
+後續補上:
+
+test_item_a1 (插檢具a)
+test_item_a2 (拔檢具a)
+
+test_item_b1 (插檢具b)
+test_item_b2 (拔檢具b)
+
+
+
+
