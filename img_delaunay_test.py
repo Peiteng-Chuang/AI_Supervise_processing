@@ -1,38 +1,225 @@
 import numpy as np
 import cv2
 from scipy.spatial import Delaunay
+from scipy.spatial import cKDTree
+from ultralytics import YOLO
+import torch
+import random
+#================================================================================================
+def find_points_numbers(points, different_points, tolerance=15):
+    """
+    將點按網格模式排序並返回指定點的編號。
+    
+    Args:
+        points (list[tuple]): 原始的點座標列表。
+        different_points (list[tuple]): 需要查找編號的點座標列表。
+        tolerance (int): x 坐標分組的誤差範圍，默認為 10。
+        
+    Returns:
+        list[tuple]: 每個目標點的 (num, x, y)，其中 num 是編號。
+    """
+    # 將 points 分組處理
+    tolerance=delaunay_layer_avg_langth(points)//3
+    print(f"tolerance :{tolerance}")
+    points_grouped = {}
+    for i, (x, y) in enumerate(points):
+        group_key = round(x / tolerance) * tolerance  # 分組鍵值
+        if group_key not in points_grouped:
+            points_grouped[group_key] = []
+        points_grouped[group_key].append((x, y))
 
-# 假設這是你的點的列表
-points = np.array([
-    (724.0, 507.0), (725.0, 412.0), (1099.0, 282.0), (1068.0, 777.0), (851.0, 823.0), (922.0, 873.0), (1140.0, 823.0), 
-    (800.0, 459.0), (867.0, 714.0), (790.0, 760.0), (868.0, 514.0), (794.0, 664.0), (1161.0, 422.0), 
-    (1228.0, 474.0), (938.0, 663.0), (711.0, 803.0), (716.0, 707.0), (926.0, 778.0), (637.0, 752.0), (1085.0, 573.0), 
-    (1085.0, 473.0), (1000.0, 830.0), (774.0, 869.0), (876.0, 410.0), (941.0, 467.0), (653.0, 360.0), 
-    (951.0, 363.0), (998.0, 727.0), (939.0, 564.0), (799.0, 367.0), (1072.0, 880.0), (1012.0, 517.0), (1014.0, 423.0), 
-    (1143.0, 727.0), (793.0, 562.0), (1088.0, 379.0), (1222.0, 782.0), (1295.0, 835.0), (730.0, 311.0), 
-    (1311.0, 336.0), (640.0, 652.0), (720.0, 609.0), (951.0, 274.0), (1236.0, 385.0), (1167.0, 333.0), (865.0, 612.0), 
-    (1310.0, 438.0), (805.0, 267.0), (1024.0, 321.0), (1154.0, 523.0), (1068.0, 676.0), (877.0, 316.0), 
-    (1009.0, 613.0), (1240.0, 285.0), (1150.0, 629.0), (646.0, 559.0), (649.0, 459.0), (658.0, 259.0), (1306.0, 525.0), 
-    (1299.0, 626.0), (1215.0, 876.0), (1223.0, 683.0), (1223.0, 579.0), (633.0, 851.0), (1298.0, 732.0)
-    ], dtype=np.int32)
+    # 排序每個組內的點 (按 y 坐標遞減)
+    for key in points_grouped:
+        points_grouped[key].sort(key=lambda p: -p[1])  # 按 y 坐標遞減排序
 
-# 創建 Delaunay 三角剖分
-tri = Delaunay(points)
+    # 排序所有分組鍵並合併後給每個點編號
+    sorted_points = []
+    for key in sorted(points_grouped.keys()):  # 按 x 分組鍵排序
+        sorted_points.extend(points_grouped[key])  # 合併結果
 
-# 建立全黑的圖像 (遮罩)
-img_size = (1920, 1080)  # 圖片大小
-image = np.zeros((img_size[1], img_size[0], 3), dtype=np.uint8)  # 全黑圖像 (高度, 寬度, 色彩通道)
+    sorted_points_with_index = [(i + 1, coord[0], coord[1]) for i, coord in enumerate(sorted_points)]
 
-# 繪製三角形邊線
-for simplex in tri.simplices:
-    pts = points[simplex]  # 獲取三角形的頂點
-    cv2.polylines(image, [pts], isClosed=True, color=(255, 255, 255), thickness=3)  # 繪製白色邊線
+    # 查找 different_points 的編號
+    different_points_num = []
+    for diff_point in different_points:
+        for idx, coord_x, crood_y in sorted_points_with_index:
+            if (coord_x, crood_y) == diff_point:
+                different_points_num.append((idx, coord_x, crood_y))
+#                 Different points with numbers:
+#                   (41, 1068, 777)
+#                   (47, 1140, 823)
+#                   (60, 1295, 835)
+                break
+        else:
+            different_points_num.append((None, diff_point[0], diff_point[1]))  # 如果沒找到，返回 None
 
-if points is not None:
-    print(points)
+    return different_points_num,sorted_points_with_index
+#================================================================================================
+def find_points_numbers_pro(points, different_points, tolerance=20):
+    """
+    將點按網格模式排序並返回指定點的編號。
+
+    Args:
+        points (list[tuple]): 原始的點座標列表。
+        different_points (list[tuple]): 需要查找編號的點座標列表。
+        tolerance (int): x 坐標分組的誤差範圍，默認為 10。
+
+    Returns:
+        list[tuple]: 每個目標點的 (num, x, y)，其中 num 是編號。
+
+    """
+    tolerance=delaunay_layer_avg_langth(points)-20
+    # 先按 y 排序，再按 x 排序
+    sorted_points = sorted(points, key=lambda p: (p[0], -p[1]))  # 按 y 遞減，再按 x 遞增排序
+
+    # 校準 y 座標，確保每一列 y 排序一致
+    calibrated_points = []
+    current_y_group = []
+    current_y = sorted_points[0][1]
+
+    for point in sorted_points:
+        if abs(point[1] - current_y) <= tolerance:  # 如果 y 在容差範圍內，加入當前組
+            current_y_group.append(point)
+        else:
+            # 將當前 y 組按 x 再次排序後加入校準結果
+            calibrated_points.extend(sorted(current_y_group, key=lambda p: p[0]))
+            current_y_group = [point]  # 開始新的一組
+            current_y = point[1]
+
+    # 處理最後一組
+    if current_y_group:
+        calibrated_points.extend(sorted(current_y_group, key=lambda p: p[0]))
+
+    # 為每個點編號
+    sorted_points_with_index = [(i + 1, coord[0], coord[1]) for i, coord in enumerate(calibrated_points)]
+
+    # 查找 different_points 的編號
+    different_points_num = []
+    for diff_point in different_points:
+        for idx, coord_x, coord_y in sorted_points_with_index:
+            if (coord_x, coord_y) == diff_point:
+                different_points_num.append((idx, coord_x, coord_y))
+                break
+        else:
+            different_points_num.append((None, diff_point[0], diff_point[1]))  # 如果沒找到，返回 None
+
+    return different_points_num, sorted_points_with_index
+#================================================================================================
+def find_points_numbers_robust(points, different_points):
+    """
+    根據最近鄰查找目標點的編號。
+
+    Args:
+        points (list[tuple]): 原始點的座標列表。
+        different_points (list[tuple]): 需要查找的目標點座標列表。
+
+    Returns:
+        list[tuple]: 每個目標點的 (num, x, y)，其中 num 是編號。
+    """
+    # 建立 KD 樹
+    tree = cKDTree(points)
+
+    # 最近鄰查找
+    different_points_num = []
+    for diff_point in different_points:
+        dist, idx = tree.query(diff_point)  # 找到最近的點
+        if dist < 1e-6:  # 距離足夠小，確定是同一個點（避免浮點誤差）
+            num = idx + 1  # 編號從 1 開始
+            different_points_num.append((num, points[idx][0], points[idx][1]))
+        else:
+            # 如果距離過大，可能不是正確點
+            different_points_num.append((None, diff_point[0], diff_point[1]))
+
+    # 按網格模式排序點 (y 降序，x 升序)
+    sorted_indices = sorted(
+        enumerate(points),
+        key=lambda x: (x[1][0], -x[1][1])  # y 先降序，x 再升序
+    )
+    sorted_points_with_index = [(i + 1, p[0], p[1]) for i, (_, p) in enumerate(sorted_indices)]
+    print(sorted_points_with_index)
+    return different_points_num, sorted_points_with_index
+
+
+#================================================================================================
+def sort_points_with_skew_correction(points, different_points):
+    # 確保 points 是 numpy array
+    points = np.array(points)
+
+    # Step 1: 計算與 y 軸最接近的線段角度
+    angles = []
+    for i in range(len(points)):
+        for j in range(i + 1, len(points)):
+            diff = points[j] - points[i]
+            angle = np.arctan2(diff[1], diff[0])  # 計算角度
+            angles.append(angle)
+
+    # 將角度轉換為與 y 軸的偏差（目標角度接近 ±90°）
+    angles_to_y_axis = [abs(abs(a) - np.pi / 2) for a in angles]
+
+    # 找到偏差最小的角度（與 y 軸最接近）
+    # closest_angles = [angles[i] for i in range(len(angles)) if angles_to_y_axis[i] < 0.1]  # 偏差小於 0.1 弧度
+    closest_angles = [angles[i] for i in range(len(angles)) if angles_to_y_axis[i] < np.deg2rad(30)]
+    # 計算這些角度的平均值作為校正角度
+    if closest_angles:
+        dominant_angle = np.mean(closest_angles)
+    else:
+        dominant_angle = 0  # 如果沒有接近 y 軸的角度，默認為 0
+
+    # Step 2: 旋轉校正，使網格變水平
+    rotation_matrix = np.array([
+        [np.cos(-dominant_angle), -np.sin(-dominant_angle)],
+        [np.sin(-dominant_angle), np.cos(-dominant_angle)]
+    ])
+    rotated_points = points @ rotation_matrix.T  # 點乘進行旋轉校正
+
+    # Step 3: 按校正後的點排序
+    sorted_indices = np.lexsort((rotated_points[:, 1], rotated_points[:, 0]))  # 按 y 再按 x 排序
+    sorted_points_with_index = [(i + 1, points[i][0], points[i][1]) for i in sorted_indices]
+    # print(sorted_points_with_index)
+
+    # Step 4: 建立 KD-Tree 查找不同點的編號
+    tree = cKDTree(points)
+    different_points_num = []
+
+    for diff_point in different_points:
+        dist, idx = tree.query(diff_point)  # 找到最近的點
+        if dist < 1e-6:  # 距離足夠小，確定是同一個點（避免浮點誤差）
+            num = sorted_indices.tolist().index(idx) + 1  # 獲取正確的排序編號
+            different_points_num.append((num, points[idx][0], points[idx][1]))
+        else:
+            # 如果距離過大，可能不是正確點
+            different_points_num.append((None, diff_point[0], diff_point[1]))
+
+    return different_points_num, sorted_points_with_index
+
+def box2point(box):
+    x1, y1, x2, y2 = box
+    cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+    point=(int(cx), int(cy))
+    return point
+
+def det_model_draw(image, model):
+
+    results = model(image, verbose=False)
+    boxes_4pt = []
+    points = []
+    for result in results:
+        boxes = result.boxes  # 获取检测框
+        for box in boxes:
+            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()  # 获取边界框坐标
+            boxes_4pt.append((x1, y1, x2, y2))
+            point=box2point((x1, y1, x2, y2))
+            points.append(point)
+
+    return image,boxes_4pt,points
+#================================================================================================
+def delaunay_layer_avg_langth(points):
     points_np = np.array(points, dtype=np.int32)
     tri = Delaunay(points_np)
-    image_delaunay = np.zeros((img_size[1], img_size[0], 3), dtype=np.uint8)
+    #計算綠線
+    total_green_length = 0  # 紀錄綠線總長度
+    green_count = 0         # 紀錄綠線的總數
+
     for simplex in tri.simplices:
         pts = points_np[simplex]
         # 計算三條邊的長度
@@ -44,26 +231,78 @@ if points is not None:
         # 判斷是否接近正三角形
         max_edge = max(edge_lengths)
         min_edge = min(edge_lengths)
-        for edge_length in edge_lengths:
-            if edge_length != max_edge and edge_length != min_edge:
-                mid_edge = edge_length
-        if mid_edge is None:
-            print("mid_edge is None")
-            break
-        if (max_edge - min_edge) / max_edge <= 0.25:  # 如果邊長差異在 n% 內
-            color = (0, 255, 0)  # 綠色
-            cv2.line(image_delaunay, tuple(pts[0]), tuple(pts[1]), color, thickness=3)
-            cv2.line(image_delaunay, tuple(pts[1]), tuple(pts[2]), color, thickness=3)
-            cv2.line(image_delaunay, tuple(pts[2]), tuple(pts[0]), color, thickness=3)
-        # else:
-        #     color = (0, 0, 255)  # 紅色
-        # 繪製三條邊
         
+        if (max_edge - min_edge) / max_edge <= 0.26:  # 如果邊長差異在 n% 內
 
-# 儲存結果
-# cv2.imwrite('triangulation.png', image)
-image=cv2.resize(image,(img_size[0]//2, img_size[1]//2))
-image_delaunay=cv2.resize(image_delaunay,(img_size[0]//2, img_size[1]//2))
-cv2.imshow("Delaunay",image)
-cv2.imshow("image_delaunay",image_delaunay)
-cv2.waitKey(0)
+            total_green_length += sum(edge_lengths)  # 累加符合條件的三邊長
+            green_count += 3  # 每個符合條件的三角形有三條綠線
+    
+    if green_count > 0:
+        avg_green_length = total_green_length / green_count
+        print(f"avg_green_length : {avg_green_length}")
+        return avg_green_length
+    else:
+        print("沒有符合條件的正三角形（綠線）。")
+        return None
+    
+#================================================================================================
+
+if __name__ == '__main__':
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    ultralytics_path = "C:/project_file/ultralytics_v11"
+
+    # egdt_model_ver = "v13"
+    # egdt_model = YOLO(f'{ultralytics_path}/runs/detect/sp_egdt_{egdt_model_ver}/weights/best.pt', verbose=False)
+    # print(f"egdt_Model loaded successfully! model version: {egdt_model_ver}")
+    # egdt_model = egdt_model.to(device)
+
+    # 加载孔洞檢測模型
+    det_model_ver = "v12"
+    det_model = YOLO(f'{ultralytics_path}/runs/detect/sp_holes_{det_model_ver}/weights/best.pt', verbose=False)
+    print(f"det_Model loaded successfully! model version: {det_model_ver}")
+    det_model = det_model.to(device)
+
+    layer=6
+    image = cv2.imread(f"C:/Users/Peiteng.Chuang/Desktop/perfect_grid/layer_{layer}.jpg")
+    image,boxes_4pt,points=det_model_draw(image, det_model)
+    
+    if len(points) >= 3:
+        different_points = random.sample(points, 3)
+        print("random test points : ", different_points)
+
+    result_num,sort_p_w_i = find_points_numbers(points, different_points)                   #GOOD但泛用性低
+    # result_num,sort_p_w_i = find_points_numbers_pro(points, different_points)                   #GOOD但泛用性低
+    # result_num,sort_p_w_i = find_points_numbers_robust(points, different_points)        #亂找ID
+    # result_num,sort_p_w_i = sort_points_with_skew_correction(points, different_points)
+    # print(sort_p_w_i)
+
+    # 輸出結果
+    print("Different points with numbers:")
+    for item in result_num:
+        print(item)
+
+
+    # # 創建畫布
+    img_size = (1920, 1080)
+    image_sort = np.zeros((img_size[1], img_size[0], 3), dtype=np.uint8)
+
+    # 在畫布上繪製點和編號
+    for num, coord_x,cord_y in sort_p_w_i:
+        x, y = map(int, (coord_x,cord_y))
+        cv2.circle(image_sort, (x, y), 5, (0, 255, 0), -1)  # 綠色小圓點
+        cv2.putText(image_sort, str(num), (x + 5, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)  # 標註編號
+    for dp in different_points:
+        dx,dy=map(int, dp)
+        cv2.circle(image_sort, (dx,dy), 6, (0, 0, 255), -1)  # 紅色小圓點
+    # #================================================================================================================================
+
+
+
+    # # 儲存結果
+    # # cv2.imwrite('triangulation.png', image)
+
+    image_sort=cv2.resize(image_sort,(img_size[0]//2, img_size[1]//2))
+    cv2.imshow("Points with Numbers", image_sort)
+
+    cv2.waitKey(0)

@@ -88,16 +88,16 @@ def main():
 
     pth="./saved_img/old_data/"
     # f_name=random_img(pth)
-    f_name =  "20241126-134947_img42.jpg" #(排一點/左邊)
+    # f_name =  "20241126-134947_img42.jpg" #(排一點/左邊)
     # f_name =  "20241127-164551_img545.jpg" #(排一半/中間)
-    # f_name =  "20241127-115046_img139.jpg" #(接近排滿/右邊)
+    f_name =  "20241127-115046_img139.jpg" #(接近排滿/右邊)
     # f_name = "20241127-094357_img13.jpg" #排滿
 
     # pth="C:/Users/Peiteng.Chuang/Desktop/perfect_grid/"
     # f_name="layer_3.jpg"
 
     img_path = pth+f_name  # 替换为你的图像路径
-    img_path = "C:/Users/Peiteng.Chuang/Desktop/factor/image/20241127/20241127-151739_img457.jpg"  # 替换为你的图像路径
+    # img_path = "C:/Users/Peiteng.Chuang/Desktop/factor/image/20241127/20241127-151739_img457.jpg"  # 替换为你的图像路径
     print(f"***{img_path}***")
 
     frame = cv2.imread(img_path)
@@ -229,25 +229,25 @@ def main():
             if mid_edge is None:
                 print("mid_edge is None")
                 break
-            # if (max_edge - min_edge) / max_edge <= 0.25:  # 如果邊長差異在 n% 內
-            #     color = (0, 255, 0)  # 綠色
-            # else:
-            #     color = (0, 0, 255)  # 紅色
-
-            # # 繪製三條邊
-            # cv2.line(image_delaunay, tuple(pts[0]), tuple(pts[1]), color, thickness=3)
-            # cv2.line(image_delaunay, tuple(pts[1]), tuple(pts[2]), color, thickness=3)
-            # cv2.line(image_delaunay, tuple(pts[2]), tuple(pts[0]), color, thickness=3)
-            #================================================================================================================================case2:只畫綠線分離
             if (max_edge - min_edge) / max_edge <= 0.25:  # 如果邊長差異在 n% 內
                 color = (0, 255, 0)  # 綠色
-                # 繪製三條邊
-                pass_line+=3
-                cv2.line(image_delaunay, tuple(pts[0]), tuple(pts[1]), color, thickness=3)
-                cv2.line(image_delaunay, tuple(pts[1]), tuple(pts[2]), color, thickness=3)
-                cv2.line(image_delaunay, tuple(pts[2]), tuple(pts[0]), color, thickness=3)
-            elif (mid_edge - min_edge) / mid_edge <=15:
-                pass_line+=2
+            else:
+                color = (0, 0, 255)  # 紅色
+
+            # 繪製三條邊
+            cv2.line(image_delaunay, tuple(pts[0]), tuple(pts[1]), color, thickness=3)
+            cv2.line(image_delaunay, tuple(pts[1]), tuple(pts[2]), color, thickness=3)
+            cv2.line(image_delaunay, tuple(pts[2]), tuple(pts[0]), color, thickness=3)
+            #================================================================================================================================case2:只畫綠線分離
+            # if (max_edge - min_edge) / max_edge <= 0.25:  # 如果邊長差異在 n% 內
+            #     color = (0, 255, 0)  # 綠色
+            #     # 繪製三條邊
+            #     pass_line+=3
+            #     cv2.line(image_delaunay, tuple(pts[0]), tuple(pts[1]), color, thickness=3)
+            #     cv2.line(image_delaunay, tuple(pts[1]), tuple(pts[2]), color, thickness=3)
+            #     cv2.line(image_delaunay, tuple(pts[2]), tuple(pts[0]), color, thickness=3)
+            # elif (mid_edge - min_edge) / mid_edge <=15:
+            #     pass_line+=2
             #================================================================================================================================case2:只畫綠線分離
             
 

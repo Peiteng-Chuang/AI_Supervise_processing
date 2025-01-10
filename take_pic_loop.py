@@ -148,10 +148,10 @@ def get_date_string():
     now = datetime.now()
     return now.strftime("%Y%m%d-%H%M%S")
 
-def is_in_time_range():
+def is_in_time_range(work_time=(8,12,13,17)):
     current_time = datetime.now()
     # 設置工作時間範圍 08:00-12:00 和 13:00-17:00
-    if (current_time.hour >= 8 and current_time.hour < 12) or (current_time.hour >= 13 and current_time.hour < 17):
+    if (current_time.hour >= work_time[0] and current_time.hour < work_time[1]) or (current_time.hour >= work_time[2] and current_time.hour < work_time[3]):
         return True
     return False
 

@@ -84,6 +84,58 @@ def random_img(path):
     # 隨機選擇一個圖像檔名
     return random.choice(img_files)
 
+def delaunay_change_layer(points,current_layer):
+    points_np = np.array(points, dtype=np.int32)
+    tri = Delaunay(points_np)
+    #計算綠線
+    total_green_length = 0  # 紀錄綠線總長度
+    green_count = 0         # 紀錄綠線的總數
+    green_score =0
+    red_score =0
+    for simplex in tri.simplices:
+        pts = points_np[simplex]
+        # 計算三條邊的長度
+        edge_lengths = [
+            np.linalg.norm(pts[0] - pts[1]),
+            np.linalg.norm(pts[1] - pts[2]),
+            np.linalg.norm(pts[2] - pts[0])
+        ]
+        # 判斷是否接近正三角形
+        max_edge = max(edge_lengths)
+        min_edge = min(edge_lengths)
+        
+        if (max_edge - min_edge) / max_edge <= 0.25:  # 如果邊長差異在 n% 內
+
+            total_green_length += sum(edge_lengths)  # 累加符合條件的三邊長
+            green_count += 3  # 每個符合條件的三角形有三條綠線
+            green_score += 1
+
+        else:
+            red_score += 1
+        #================================================================================================================================
+    layer_th=[12,83,142,234,300]#手動設定驗證分層
+    layer_th2=[92,98,105,113,123,136]#先驗知識
+    
+    if green_count > 0:
+        score=green_score/99*100
+        avg_green_length = total_green_length / green_count
+        avg_score= 100-(abs(layer_th2[current_layer]-avg_green_length)/avg_green_length*100)
+        # print(f"avg score : {avg_score:.3f}, green line score : {score:.3f}, total score : {(avg_score+ score)/2:.3f}")
+        cl_score=(avg_score+ score)/2
+        
+        print(f" Avg : {avg_green_length:6.2f} , G/R : {green_score:3}/{red_score:2}, avg score : {avg_score:7.3f}, green line score : {score:7.3f}, total score : {(avg_score+ score)/2:7.3f}")
+
+
+        if cl_score >=98.8:        #綜合分數高於98.8
+            print(f"### Changing layer , current layer : {current_layer+1} > {current_layer+2} ###")
+            if current_layer+1<len(layer_th2):
+                current_layer+=1
+            else:
+                print("已達到最高層次，你的演算法爆掉了")
+                return 0
+    else:
+        print("沒有符合條件的正三角形（綠線）。")
+    return cl_score ,current_layer
 
 def main():
     txt_pth="C:/Users/Peiteng.Chuang/Desktop/layer_avg_auto.txt"
@@ -202,83 +254,90 @@ def main():
 
 
         if points is not None:
-            # print(points)
-            points_np = np.array(points, dtype=np.int32)
-            tri = Delaunay(points_np)
+            cl_score ,current_layer=delaunay_change_layer(points,current_layer)
 
-            image_delaunay = np.zeros((height, width, 3), dtype=np.uint8)
-            #計算綠線
-            total_green_length = 0  # 紀錄綠線總長度
-            green_count = 0         # 紀錄綠線的總數
-            green_score =0
-            red_score =0
+            # # print(points)
 
-            for simplex in tri.simplices:
-                pts = points_np[simplex]
 
-                # 計算三條邊的長度
-                edge_lengths = [
-                    np.linalg.norm(pts[0] - pts[1]),
-                    np.linalg.norm(pts[1] - pts[2]),
-                    np.linalg.norm(pts[2] - pts[0])
-                ]
 
-                # 判斷是否接近正三角形
-                max_edge = max(edge_lengths)
-                min_edge = min(edge_lengths)
+            # points_np = np.array(points, dtype=np.int32)
+            # tri = Delaunay(points_np)
+
+            # image_delaunay = np.zeros((height, width, 3), dtype=np.uint8)
+            # #計算綠線
+            # total_green_length = 0  # 紀錄綠線總長度
+            # green_count = 0         # 紀錄綠線的總數
+            # green_score =0
+            # red_score =0
+
+            # for simplex in tri.simplices:
+            #     pts = points_np[simplex]
+
+            #     # 計算三條邊的長度
+            #     edge_lengths = [
+            #         np.linalg.norm(pts[0] - pts[1]),
+            #         np.linalg.norm(pts[1] - pts[2]),
+            #         np.linalg.norm(pts[2] - pts[0])
+            #     ]
+
+            #     # 判斷是否接近正三角形
+            #     max_edge = max(edge_lengths)
+            #     min_edge = min(edge_lengths)
                 
-                #================================================================================================================================case1:畫綠紅線分離
-                # if (max_edge - min_edge) / max_edge <= 0.25:  # 如果邊長差異在 n% 內
-                #     color = (0, 255, 0)  # 綠色
-                # else:
-                #     color = (0, 0, 255)  # 紅色
+            #     #================================================================================================================================case1:畫綠紅線分離
+            #     # if (max_edge - min_edge) / max_edge <= 0.25:  # 如果邊長差異在 n% 內
+            #     #     color = (0, 255, 0)  # 綠色
+            #     # else:
+            #     #     color = (0, 0, 255)  # 紅色
 
-                # # 繪製三條邊
-                # cv2.line(image_delaunay, tuple(pts[0]), tuple(pts[1]), color, thickness=3)
-                # cv2.line(image_delaunay, tuple(pts[1]), tuple(pts[2]), color, thickness=3)
-                # cv2.line(image_delaunay, tuple(pts[2]), tuple(pts[0]), color, thickness=3)
-                #================================================================================================================================case2:只畫綠線分離
-                if (max_edge - min_edge) / max_edge <= 0.25:  # 如果邊長差異在 n% 內
-                    color = (0, 255, 0)  # 綠色
-                    total_green_length += sum(edge_lengths)  # 累加符合條件的三邊長
-                    green_count += 3  # 每個符合條件的三角形有三條綠線
-                    green_score += 1
-                    # 繪製三條邊
-                    # cv2.line(image_delaunay, tuple(pts[0]), tuple(pts[1]), color, thickness=3)
-                    # cv2.line(image_delaunay, tuple(pts[1]), tuple(pts[2]), color, thickness=3)
-                    # cv2.line(image_delaunay, tuple(pts[2]), tuple(pts[0]), color, thickness=3)
-                else:
-                    red_score += 1
-                #================================================================================================================================
-            layer_th=[12,83,142,234,300]#手動設定驗證分層
-            layer_th2=[92,98,105,113,123,136]#先驗知識
+            #     # # 繪製三條邊
+            #     # cv2.line(image_delaunay, tuple(pts[0]), tuple(pts[1]), color, thickness=3)
+            #     # cv2.line(image_delaunay, tuple(pts[1]), tuple(pts[2]), color, thickness=3)
+            #     # cv2.line(image_delaunay, tuple(pts[2]), tuple(pts[0]), color, thickness=3)
+            #     #================================================================================================================================case2:只畫綠線分離
+            #     if (max_edge - min_edge) / max_edge <= 0.25:  # 如果邊長差異在 n% 內
+            #         color = (0, 255, 0)  # 綠色
+            #         total_green_length += sum(edge_lengths)  # 累加符合條件的三邊長
+            #         green_count += 3  # 每個符合條件的三角形有三條綠線
+            #         green_score += 1
+            #         # 繪製三條邊
+            #         # cv2.line(image_delaunay, tuple(pts[0]), tuple(pts[1]), color, thickness=3)
+            #         # cv2.line(image_delaunay, tuple(pts[1]), tuple(pts[2]), color, thickness=3)
+            #         # cv2.line(image_delaunay, tuple(pts[2]), tuple(pts[0]), color, thickness=3)
+            #     else:
+            #         red_score += 1
+            #     #================================================================================================================================
+            # layer_th=[12,83,142,234,300]#手動設定驗證分層
+            # layer_th2=[92,98,105,113,123,136]#先驗知識
             
             
-            if green_count > 0:
-                score=green_score/99*100
-                avg_green_length = total_green_length / green_count
-                avg_score= 100-(abs(layer_th2[current_layer]-avg_green_length)/avg_green_length*100)
-                # print(f"avg score : {avg_score:.3f}, green line score : {score:.3f}, total score : {(avg_score+ score)/2:.3f}")
+            # if green_count > 0:
+
+            #     score=green_score/99*100
+            #     avg_green_length = total_green_length / green_count
+            #     avg_score= 100-(abs(layer_th2[current_layer]-avg_green_length)/avg_green_length*100)
+            #     # print(f"avg score : {avg_score:.3f}, green line score : {score:.3f}, total score : {(avg_score+ score)/2:.3f}")
+            #     cl_score=delaunay_change_layer()
                 
 
-                print(f"{image_files[index]:28}, Avg : {avg_green_length:6.2f} , G/R : {green_score:3}/{red_score:2}, avg score : {avg_score:7.3f}, green line score : {score:7.3f}, total score : {(avg_score+ score)/2:7.3f},{current_file_number:3}")
-                with open(txt_pth, 'a') as f:
-                    f.write(f"{image_files[index]:28}, Avg : {avg_green_length:6.2f} , G/R : {green_score:3}/{red_score:2}, avg score : {avg_score:7.3f}, green line score : {score:7.3f}, total score : {(avg_score+ score)/2:7.3f},{current_file_number:3}\n")
-                    if current_file_number in layer_th:
-                        print(f"*** changing layer ***")
-                        f.write('This is Default Threshold\n')
+            #     print(f"{image_files[index]:28}, Avg : {avg_green_length:6.2f} , G/R : {green_score:3}/{red_score:2}, avg score : {avg_score:7.3f}, green line score : {score:7.3f}, total score : {(avg_score+ score)/2:7.3f},{current_file_number:3}")
+            #     with open(txt_pth, 'a') as f:
+            #         f.write(f"{image_files[index]:28}, Avg : {avg_green_length:6.2f} , G/R : {green_score:3}/{red_score:2}, avg score : {avg_score:7.3f}, green line score : {score:7.3f}, total score : {(avg_score+ score)/2:7.3f},{current_file_number:3}\n")
+            #         if current_file_number in layer_th:
+            #             print(f"*** changing layer ***")
+            #             f.write('This is Default Threshold\n')
 
-                    if (avg_score+ score)/2 >=98.8:        #綜合分數高於98.8
-                        print(f"### Changing layer , current layer : {current_layer+1} > {current_layer+2} ###")
-                        if current_layer+1<len(layer_th2):
-                            current_layer+=1
-                            f.write(f"##### (Auto detection) Changing layer , current layer : {current_layer} > {current_layer+1} #####   \n")
-                        else:
-                            print("已達到最高層次，你的演算法爆掉了")
-                            break
+            #         if cl_score >=98.8:        #綜合分數高於98.8
+            #             print(f"### Changing layer , current layer : {current_layer+1} > {current_layer+2} ###")
+            #             if current_layer+1<len(layer_th2):
+            #                 current_layer+=1
+            #                 f.write(f"##### (Auto detection) Changing layer , current layer : {current_layer} > {current_layer+1} #####   \n")
+            #             else:
+            #                 print("已達到最高層次，你的演算法爆掉了")
+            #                 break
 
-            else:
-                print("沒有符合條件的正三角形（綠線）。")
+            # else:
+            #     print("沒有符合條件的正三角形（綠線）。")
 
             # 調整大小以便顯示
             # image_delaunay = cv2.resize(image_delaunay, (image_delaunay.shape[1] // 2, image_delaunay.shape[0] // 2))
